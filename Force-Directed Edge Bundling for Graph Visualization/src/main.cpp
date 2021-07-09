@@ -60,9 +60,11 @@ struct Edge {
     void update(vector<point>& forces_, double S_);
     const point vec()const;
 };
+
 const point Edge::vec()const {
     return _end - _start;
 }
+
 const point Edge::MidPoint()const {
     return center(_start, _end);
 }
@@ -89,6 +91,8 @@ void Edge::add_subdivisions() {
         point v1 = _start, v2 = _subdivs[0];
 
         //r为segmentLength，意义同上，后续r的意义为跳转到第几个的倍数
+
+        //这是重点：求得只是细分点，而不是点与点之间的线段关系，一些点在运行的过程中有已经被逐渐的丢掉了
         double r = segmentLength;
         while (subdivIndex < newSubdivsNum)
         {
@@ -98,7 +102,6 @@ void Edge::add_subdivisions() {
 
             //不好解释
             //cerr << "r + segmentLength:" << r + segmentLength << " " << (r + segmentLength - 1 > 0) << " " << (r + segmentLength - 1) << endl;
-
 
 
             //double用于比较大于小于奇怪的bug，不能用 if(r + segmentLength > 1.0)进行判断，奇奇怪怪的
@@ -209,8 +212,10 @@ double scale_compatibility(const Edge& edge1_, const Edge& edge2_)
     double l1 = edge1_.vec().length();
     double l2 = edge2_.vec().length();
     double lavg = (l1 + l2) / 2.0;
+
+    //防止出现除以0的情况
     if (lavg > EPSILON)
-        return 2.0 / (lavg / std::min(l1, l2) + std::max(l1, l2) / lavg);
+        return 2.0 / (lavg / min(l1, l2) + max(l1, l2) / lavg);
     else
         return 0.0;
 }
@@ -218,6 +223,7 @@ double scale_compatibility(const Edge& edge1_, const Edge& edge2_)
 double position_compatibility(const Edge& edge1_, const Edge& edge2_)
 {
     double lavg = (edge1_.vec().length() + edge2_.vec().length()) / 2.0;
+    //防止出现除以0的情况
     if (lavg > EPSILON)
     {
         const vec mid1 = center(edge1_._start, edge1_._end);
@@ -230,7 +236,7 @@ double position_compatibility(const Edge& edge1_, const Edge& edge2_)
 
 double visibility_compability(const Edge& edge1_, const Edge& edge2_)
 {
-    return std::min(edge_visibility(edge1_, edge2_), edge_visibility(edge2_, edge1_));
+    return min(edge_visibility(edge1_, edge2_), edge_visibility(edge2_, edge1_));
 }
 
 struct Graph {
