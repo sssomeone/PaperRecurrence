@@ -124,62 +124,6 @@ void Edge::add_subdivisions() {
         _subdivs = subdivisions;
     }
 }
-
-
-void Edge::add_spring_forces(vector<point>& forces_, double K_)
-{
-    int len = (int)_subdivs.size();
-
-    //与论文的公式貌似有一点点的出入
-    double kP = K_ / ((_end - _start).length() * double(len + 1));
-
-    if (len == 1)
-        forces_[0] += (_start + _end - _subdivs[0] * 2.0) * kP;
-    else
-    {
-        // first division point
-        forces_[0] += (_start + _subdivs[1] - _subdivs[0] * 2.0) * kP;
-        // inner division points
-        for (int i = 1; i < len - 1; i++)
-            forces_[i] += (_subdivs[i - 1] + _subdivs[i + 1] - _subdivs[i] * 2.0) * kP;
-        // last division point
-        forces_[len - 1] += (_subdivs[len - 2] + _end - _subdivs[len - 1] * 2.0) * kP;
-    }
-}
-
-
-void Edge::add_electrostatic_forces(vector<point>& forces_, Edge edge_, double epsilon_)
-{
-    int len = (int)_subdivs.size();
-    double dlen;
-
-    //cerr << "add_electrostatic_forces start "<<len << endl;
-    for (int i = 0; i < len; i++)
-    {
-        auto dist = (edge_._subdivs[i] - _subdivs[i]);
-        dlen = dist.length();
-        if (dlen > epsilon_)
-            forces_[i] += dist / dlen;
-    }
-    //cerr << "add_electrostatic_forces end " << endl;
-}
-
-
-void Edge::update(vector<point>& forces_, double S_)
-{
-    int len = (int)_subdivs.size();
-    double flen = 0.0;
-    for (int i = 0; i < len; i++)
-    {
-        flen = forces_[i].length();
-        
-        /*******************************************************************/
-        //与合力的大小没有关系，只是在力的方向上移动固定的距离
-        if (flen > EPSILON)
-            _subdivs[i] += forces_[i] * S_ / flen;
-    }
-}
-
 const point project(const point& point_, const point& lineStart_, const point& lineEnd_)
 {
     double L = (lineStart_ - lineEnd_).length();
@@ -232,6 +176,68 @@ double visibility_compability(const Edge& edge1_, const Edge& edge2_)
 {
     return std::min(edge_visibility(edge1_, edge2_), edge_visibility(edge2_, edge1_));
 }
+
+
+
+void Edge::add_spring_forces(vector<point>& forces_, double K_)
+{
+    int len = (int)_subdivs.size();
+
+    //与论文的公式貌似有一点点的出入
+    double kP = K_ / ((_end - _start).length() * double(len + 1));
+
+    if (len == 1)
+        forces_[0] += (_start + _end - _subdivs[0] * 2.0) * kP;
+    else
+    {
+        // first division point
+        forces_[0] += (_start + _subdivs[1] - _subdivs[0] * 2.0) * kP;
+        // inner division points
+        for (int i = 1; i < len - 1; i++)
+            forces_[i] += (_subdivs[i - 1] + _subdivs[i + 1] - _subdivs[i] * 2.0) * kP;
+        // last division point
+        forces_[len - 1] += (_subdivs[len - 2] + _end - _subdivs[len - 1] * 2.0) * kP;
+    }
+}
+
+
+void Edge::add_electrostatic_forces(vector<point>& forces_, Edge edge_, double epsilon_)
+{
+    int len = (int)_subdivs.size();
+    double dlen;
+
+    //cerr << "add_electrostatic_forces start "<<len << endl;
+    for (int i = 0; i < len; i++)
+    {
+        auto dist = (edge_._subdivs[i] - _subdivs[i]);
+        dlen = dist.length();
+        if (dlen > epsilon_){
+             //★
+            double comp = angle_compatilibity(*this, edge_) * 
+            scale_compatibility(*this, edge_) * position_compatibility(*this, edge_) * visibility_compability(*this, edge_);
+            forces_[i] += dist*comp / (dlen*dlen);
+        }
+    }
+    //cerr << "add_electrostatic_forces end " << endl;
+}
+
+
+void Edge::update(vector<point>& forces_, double S_)
+{
+    int len = (int)_subdivs.size();
+    double flen = 0.0;
+    for (int i = 0; i < len; i++)
+    {
+        flen = forces_[i].length();
+        
+        /*******************************************************************/
+        //与合力的大小没有关系，只是在力的方向上移动固定的距离
+        if (flen > EPSILON)
+            _subdivs[i] += forces_[i] * S_ / flen;
+    }
+}
+
+
 
 struct Graph {
     vector<Edge>_edges;
